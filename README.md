@@ -7,6 +7,7 @@
 
 Для примера задачи можно использовать следуюющее:
 
+```
 class TestJob {
   Stream<Integer> run(int min, int max, int count) {
     AtomicInteger counter = new AtomicInteger(0);
@@ -19,3 +20,4 @@ class TestJob {
       .takeWhile(n -> counter.get() < count);
   }
 }
+```
