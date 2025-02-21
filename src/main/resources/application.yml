@@ -1,0 +1,13 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: job-runner
+  kafka:
+    consumer:
+      group-id: job-workers
+      auto-offset-reset: earliest
+  data:
+    redis:
+      port: 6379
