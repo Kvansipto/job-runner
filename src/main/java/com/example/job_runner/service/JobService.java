@@ -3,6 +3,7 @@ package com.example.job_runner.service;
 import com.example.job_runner.dto.JobStatusDTO;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import java.util.UUID;
 import static com.example.job_runner.model.JobStatus.FAILED;
 import static com.example.job_runner.model.JobStatus.PENDING;
 
+@Slf4j
 @Service
 public class JobService {
     private static final Duration JOB_TTL = Duration.of(14, ChronoUnit.DAYS);
@@ -32,6 +34,8 @@ public class JobService {
     }
 
     public String startJob(int min, int max, int count) {
+        log.info("Creating job with parameters: min={}, max={}, count={}", min, max, count);
+
         String jobId = UUID.randomUUID().toString();
         String jobKey = "job:" + jobId;
 
@@ -39,13 +43,14 @@ public class JobService {
 
         String status = (String) redisTemplate.opsForHash().get(jobKey, "status");
         if (FAILED.name().equals(status)) {
-            System.out.println("Found the job in FAILED status. Delete old one and start the job.");
+            log.warn("Found a FAILED job {}. Removing and restarting.", jobId);
             redisTemplate.delete(jobKey);
             redisTemplate.delete(lockKey);
         }
         Boolean isNew = redisTemplate.opsForValue().setIfAbsent(lockKey, "LOCKED");
         if (Boolean.FALSE.equals(isNew)) {
-            throw new RuntimeException("Job is already running!");
+            log.error("Duplicate job attempt detected: min={}, max={}, count={}", min, max, count);
+            throw new IllegalStateException("Job is already running!");
         }
         Map<String, String> jobData = Map.of(
                 "status", PENDING.name(),
@@ -67,7 +72,9 @@ public class JobService {
                     "count", count
             ));
             kafkaTemplate.send("job-queue", jobId, payload);
+            log.info("Job {} has been successfully queued.", jobId);
         } catch (JsonProcessingException e) {
+            log.error("JSON serialization error for job {}: {}", jobId, e.getMessage(), e);
             throw new RuntimeException("JSON Serialization exception: ", e);
         }
         return jobId;
@@ -78,12 +85,16 @@ public class JobService {
         Map<Object, Object> jobData = redisTemplate.opsForHash().entries(jobKey);
 
         if (jobData.isEmpty()) {
+            log.warn("Job {} does not exist.", id);
             throw new RuntimeException("The job " + id + " doesn't exist!");
         }
+        var status = jobData.get("status").toString();
+        var progress = jobData.get("progress").toString();
 
+        log.info("Job {} status retrieved: status={}, progress={}", id, status, progress);
         return new JobStatusDTO(
-                jobData.get("status").toString(),
-                jobData.get("progress").toString(),
+                status,
+                progress,
                 jobData.get("result").toString()
         );
     }

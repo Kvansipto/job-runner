@@ -3,6 +3,7 @@ package com.example.job_runner.worker;
 import com.example.job_runner.jobs.TestJob;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -18,6 +19,7 @@ import java.util.stream.Stream;
 
 import static com.example.job_runner.model.JobStatus.*;
 
+@Slf4j
 @Service
 public class JobWorker {
     private static final int MAX_RETRIES = 3;
@@ -58,13 +60,14 @@ public class JobWorker {
 
             String status = (String) redisTemplate.opsForHash().get(jobKey, "status");
             if (COMPLETED.name().equals(status)) {
-                System.out.println("Task " + jobId + " has already been completed");
+                log.info("Job {} is already completed. Skipping.", jobId);
                 return;
             }
             if (!RUNNING.name().equals(status)) {
                 redisTemplate.opsForHash().put(jobKey, "status", RUNNING.name());
             }
 
+            log.info("Starting job {} (min={}, max={}, count={})", jobId, min, max, count);
             String progressStr = (String) redisTemplate.opsForHash().get(jobKey, "progress");
             int progress = progressStr != null ? Integer.parseInt(progressStr) : 0;
 
@@ -85,6 +88,7 @@ public class JobWorker {
                 }
             }
 
+            log.info("Job {} completed successfully.", jobId);
             updateRedis(jobKey, progress, numbers);
             redisTemplate.opsForHash().put(jobKey, "status", COMPLETED.name());
             redisTemplate.delete(lockKey);
@@ -94,11 +98,11 @@ public class JobWorker {
             int retryCount = retryCountStr != null ? Integer.parseInt(retryCountStr) : 0;
 
             if (retryCount < MAX_RETRIES) {
-                System.out.println("Rerunning job " + jobId + " (attempt " + (retryCount + 1) + ")");
+                log.warn("Rerunning job {} (attempt {}/{})", jobId, retryCount + 1, MAX_RETRIES);
                 redisTemplate.opsForHash().put("job:" + jobId, "retries", String.valueOf(retryCount + 1));
                 kafkaTemplate.send("job-queue", jobId, message);
             } else {
-                System.err.println("Max amount of attempts has reached. Job " + jobId + " has FAILED status");
+                log.error("Max retries reached for job {}. Marking as FAILED.", jobId);
                 redisTemplate.opsForHash().put("job:" + jobId, "status", FAILED.name());
                 redisTemplate.delete(lockKey);
             }
@@ -109,9 +113,10 @@ public class JobWorker {
         try {
             redisTemplate.opsForHash().put(jobKey, "progress", String.valueOf(progress));
             redisTemplate.opsForHash().put(jobKey, "result", objectMapper.writeValueAsString(numbers));
+            log.debug("Updated job {}: progress = {}", jobKey, progress);
         } catch (Exception e) {
-            System.err.println("Error while updating job status in Redis: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Error while updating job {} status in Redis: {}", jobKey, e.getMessage(), e);
+
         }
     }
 }
