@@ -4,13 +4,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 public class TestJob {
-    public Stream<Integer> run(int min, int max, int count) {
-        AtomicInteger counter = new AtomicInteger(0);
+    public Stream<Integer> run(int min, int max, int count, int startProgress) {
+        AtomicInteger counter = new AtomicInteger(startProgress);
         return Stream
                 .generate(() -> {
                     counter.incrementAndGet();
-                    int random = (int) (Math.random() * max + min);
-                    return random;
+                    return (int) (Math.random() * max + min);
                 })
                 .takeWhile(n -> counter.get() < count);
     }

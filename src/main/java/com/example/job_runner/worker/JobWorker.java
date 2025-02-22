@@ -16,6 +16,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 
+import static com.example.job_runner.model.JobStatus.*;
+
 @Service
 public class JobWorker {
     private static final int MAX_RETRIES = 3;
@@ -42,6 +44,7 @@ public class JobWorker {
 
     private void handleJob(String message) {
         String jobId = null;
+        String lockKey = null;
         try {
             Map<String, Object> jobData = objectMapper.readValue(message, new TypeReference<>() {
             });
@@ -51,15 +54,15 @@ public class JobWorker {
             int count = (int) jobData.get("count");
 
             String jobKey = "job:" + jobId;
+            lockKey = "lock:job:" + min + "_" + max + "_" + count;
 
             String status = (String) redisTemplate.opsForHash().get(jobKey, "status");
-            if ("COMPLETED".equals(status)) {
+            if (COMPLETED.name().equals(status)) {
                 System.out.println("Task " + jobId + " has already been completed");
                 return;
             }
-
-            if (!"RUNNING".equals(status)) {
-                redisTemplate.opsForHash().put(jobKey, "status", "RUNNING");
+            if (!RUNNING.name().equals(status)) {
+                redisTemplate.opsForHash().put(jobKey, "status", RUNNING.name());
             }
 
             String progressStr = (String) redisTemplate.opsForHash().get(jobKey, "progress");
@@ -69,7 +72,7 @@ public class JobWorker {
             List<Integer> numbers = resultStr != null ? objectMapper.readValue(resultStr, new TypeReference<>() {
             }) : new ArrayList<>();
 
-            Stream<Integer> stream = testJob.run(min, max, count);
+            Stream<Integer> stream = testJob.run(min, max, count, progress);
             Instant lastUpdate = Instant.now();
 
             for (Integer number : (Iterable<Integer>) stream::iterator) {
@@ -83,8 +86,8 @@ public class JobWorker {
             }
 
             updateRedis(jobKey, progress, numbers);
-            redisTemplate.opsForHash().put(jobKey, "status", "COMPLETED");
-            redisTemplate.delete("lock:job:" + min + "_" + max + "_" + count);
+            redisTemplate.opsForHash().put(jobKey, "status", COMPLETED.name());
+            redisTemplate.delete(lockKey);
 
         } catch (Exception e) {
             String retryCountStr = (String) redisTemplate.opsForHash().get("job:" + jobId, "retries");
@@ -96,7 +99,8 @@ public class JobWorker {
                 kafkaTemplate.send("job-queue", jobId, message);
             } else {
                 System.err.println("Max amount of attempts has reached. Job " + jobId + " has FAILED status");
-                redisTemplate.opsForHash().put("job:" + jobId, "status", "FAILED");
+                redisTemplate.opsForHash().put("job:" + jobId, "status", FAILED.name());
+                redisTemplate.delete(lockKey);
             }
         }
     }

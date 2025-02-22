@@ -12,8 +12,13 @@ import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.UUID;
 
+import static com.example.job_runner.model.JobStatus.FAILED;
+import static com.example.job_runner.model.JobStatus.PENDING;
+
 @Service
 public class JobService {
+    private static final Duration JOB_TTL = Duration.of(14, ChronoUnit.DAYS);
+
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
@@ -33,17 +38,17 @@ public class JobService {
         String lockKey = "lock:job:" + min + "_" + max + "_" + count;
 
         String status = (String) redisTemplate.opsForHash().get(jobKey, "status");
-        if ("FAILED".equals(status)) {
+        if (FAILED.name().equals(status)) {
             System.out.println("Found the job in FAILED status. Delete old one and start the job.");
             redisTemplate.delete(jobKey);
             redisTemplate.delete(lockKey);
         }
-        Boolean isNew = redisTemplate.opsForValue().setIfAbsent(lockKey, "LOCKED", Duration.of(24, ChronoUnit.HOURS));
+        Boolean isNew = redisTemplate.opsForValue().setIfAbsent(lockKey, "LOCKED");
         if (Boolean.FALSE.equals(isNew)) {
             throw new RuntimeException("Job is already running!");
         }
         Map<String, String> jobData = Map.of(
-                "status", "PENDING",
+                "status", PENDING.name(),
                 "min", String.valueOf(min),
                 "max", String.valueOf(max),
                 "count", String.valueOf(count),
@@ -52,6 +57,7 @@ public class JobService {
                 "retries", "0"
         );
         redisTemplate.opsForHash().putAll(jobKey, jobData);
+        redisTemplate.expire(jobKey, JOB_TTL);
 
         try {
             String payload = objectMapper.writeValueAsString(Map.of(
