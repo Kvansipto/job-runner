@@ -31,6 +31,13 @@ public class JobService {
         String jobKey = "job:" + jobId;
 
         String lockKey = "lock:job:" + min + "_" + max + "_" + count;
+
+        String status = (String) redisTemplate.opsForHash().get(jobKey, "status");
+        if ("FAILED".equals(status)) {
+            System.out.println("Found the job in FAILED status. Delete old one and start the job.");
+            redisTemplate.delete(jobKey);
+            redisTemplate.delete(lockKey);
+        }
         Boolean isNew = redisTemplate.opsForValue().setIfAbsent(lockKey, "LOCKED", Duration.of(24, ChronoUnit.HOURS));
         if (Boolean.FALSE.equals(isNew)) {
             throw new RuntimeException("Job is already running!");
@@ -41,7 +48,8 @@ public class JobService {
                 "max", String.valueOf(max),
                 "count", String.valueOf(count),
                 "progress", "0",
-                "result", "[]"
+                "result", "[]",
+                "retries", "0"
         );
         redisTemplate.opsForHash().putAll(jobKey, jobData);
 
