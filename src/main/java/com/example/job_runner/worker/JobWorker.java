@@ -51,14 +51,14 @@ public class JobWorker {
             Map<String, Object> jobData = objectMapper.readValue(message, new TypeReference<>() {
             });
             jobId = (String) jobData.get("jobId");
-            int min = (int) jobData.get("min");
-            int max = (int) jobData.get("max");
-            int count = (int) jobData.get("count");
+            var min = (int) jobData.get("min");
+            var max = (int) jobData.get("max");
+            var count = (int) jobData.get("count");
 
-            String jobKey = "job:" + jobId;
+            var jobKey = "job:" + jobId;
             lockKey = "lock:job:" + min + "_" + max + "_" + count;
 
-            String status = (String) redisTemplate.opsForHash().get(jobKey, "status");
+            var status = (String) redisTemplate.opsForHash().get(jobKey, "status");
             if (COMPLETED.name().equals(status)) {
                 log.info("Job {} is already completed. Skipping.", jobId);
                 return;
@@ -68,17 +68,17 @@ public class JobWorker {
             }
 
             log.info("Starting job {} (min={}, max={}, count={})", jobId, min, max, count);
-            String progressStr = (String) redisTemplate.opsForHash().get(jobKey, "progress");
-            int progress = progressStr != null ? Integer.parseInt(progressStr) : 0;
+            var progressStr = (String) redisTemplate.opsForHash().get(jobKey, "progress");
+            var progress = progressStr != null ? Integer.parseInt(progressStr) : 0;
 
-            String resultStr = (String) redisTemplate.opsForHash().get(jobKey, "result");
+            var resultStr = (String) redisTemplate.opsForHash().get(jobKey, "result");
             List<Integer> numbers = resultStr != null ? objectMapper.readValue(resultStr, new TypeReference<>() {
             }) : new ArrayList<>();
 
             Stream<Integer> stream = testJob.run(min, max, count, progress);
-            Instant lastUpdate = Instant.now();
+            var lastUpdate = Instant.now();
 
-            for (Integer number : (Iterable<Integer>) stream::iterator) {
+            for (var number : (Iterable<Integer>) stream::iterator) {
                 numbers.add(number);
                 progress++;
 
@@ -94,8 +94,8 @@ public class JobWorker {
             redisTemplate.delete(lockKey);
 
         } catch (Exception e) {
-            String retryCountStr = (String) redisTemplate.opsForHash().get("job:" + jobId, "retries");
-            int retryCount = retryCountStr != null ? Integer.parseInt(retryCountStr) : 0;
+            var retryCountStr = (String) redisTemplate.opsForHash().get("job:" + jobId, "retries");
+            var retryCount = retryCountStr != null ? Integer.parseInt(retryCountStr) : 0;
 
             if (retryCount < MAX_RETRIES) {
                 log.warn("Rerunning job {} (attempt {}/{})", jobId, retryCount + 1, MAX_RETRIES);

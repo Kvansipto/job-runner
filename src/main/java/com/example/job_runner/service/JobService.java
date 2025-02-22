@@ -36,23 +36,23 @@ public class JobService {
     public String startJob(int min, int max, int count) {
         log.info("Creating job with parameters: min={}, max={}, count={}", min, max, count);
 
-        String jobId = UUID.randomUUID().toString();
-        String jobKey = "job:" + jobId;
+        var jobId = UUID.randomUUID().toString();
+        var jobKey = "job:" + jobId;
 
-        String lockKey = "lock:job:" + min + "_" + max + "_" + count;
+        var lockKey = "lock:job:" + min + "_" + max + "_" + count;
 
-        String status = (String) redisTemplate.opsForHash().get(jobKey, "status");
+        var status = (String) redisTemplate.opsForHash().get(jobKey, "status");
         if (FAILED.name().equals(status)) {
             log.warn("Found a FAILED job {}. Removing and restarting.", jobId);
             redisTemplate.delete(jobKey);
             redisTemplate.delete(lockKey);
         }
-        Boolean isNew = redisTemplate.opsForValue().setIfAbsent(lockKey, "LOCKED");
+        var isNew = redisTemplate.opsForValue().setIfAbsent(lockKey, "LOCKED");
         if (Boolean.FALSE.equals(isNew)) {
             log.error("Duplicate job attempt detected: min={}, max={}, count={}", min, max, count);
             throw new IllegalStateException("Job is already running!");
         }
-        Map<String, String> jobData = Map.of(
+        var jobData = Map.of(
                 "status", PENDING.name(),
                 "min", String.valueOf(min),
                 "max", String.valueOf(max),
@@ -65,7 +65,7 @@ public class JobService {
         redisTemplate.expire(jobKey, JOB_TTL);
 
         try {
-            String payload = objectMapper.writeValueAsString(Map.of(
+            var payload = objectMapper.writeValueAsString(Map.of(
                     "jobId", jobId,
                     "min", min,
                     "max", max,
@@ -81,8 +81,8 @@ public class JobService {
     }
 
     public JobStatusDTO getJobStatus(String id) {
-        String jobKey = "job:" + id;
-        Map<Object, Object> jobData = redisTemplate.opsForHash().entries(jobKey);
+        var jobKey = "job:" + id;
+        var jobData = redisTemplate.opsForHash().entries(jobKey);
 
         if (jobData.isEmpty()) {
             log.warn("Job {} does not exist.", id);

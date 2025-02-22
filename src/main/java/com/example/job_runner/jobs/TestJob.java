@@ -5,7 +5,7 @@ import java.util.stream.Stream;
 
 public class TestJob {
     public Stream<Integer> run(int min, int max, int count, int startProgress) {
-        AtomicInteger counter = new AtomicInteger(startProgress);
+        var counter = new AtomicInteger(startProgress);
         return Stream
                 .generate(() -> {
                     counter.incrementAndGet();
