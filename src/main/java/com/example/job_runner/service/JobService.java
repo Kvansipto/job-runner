@@ -5,8 +5,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
@@ -50,7 +52,7 @@ public class JobService {
         var isNew = redisTemplate.opsForValue().setIfAbsent(lockKey, "LOCKED");
         if (Boolean.FALSE.equals(isNew)) {
             log.error("Duplicate job attempt detected: min={}, max={}, count={}", min, max, count);
-            throw new IllegalStateException("Job is already running!");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Job is already running!");
         }
         var jobData = Map.of(
                 "status", PENDING.name(),
@@ -86,7 +88,7 @@ public class JobService {
 
         if (jobData.isEmpty()) {
             log.warn("Job {} does not exist.", id);
-            throw new RuntimeException("The job " + id + " doesn't exist!");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "The job " + id + " doesn't exist!");
         }
         var status = jobData.get("status").toString();
         var progress = jobData.get("progress").toString();

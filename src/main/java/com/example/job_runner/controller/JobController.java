@@ -1,5 +1,6 @@
 package com.example.job_runner.controller;
 
+import com.example.job_runner.dto.JobRequestDTO;
 import com.example.job_runner.dto.JobStatusDTO;
 import com.example.job_runner.service.JobService;
 import org.springframework.http.ResponseEntity;
@@ -16,8 +17,11 @@ public class JobController {
     }
 
     @PostMapping
-    public ResponseEntity<String> createJob(@RequestParam int min, @RequestParam int max, @RequestParam int count) {
-        return ResponseEntity.ok(jobService.startJob(min, max, count));
+    public ResponseEntity<String> createJob(@RequestBody JobRequestDTO jobRequestDTO) {
+        return ResponseEntity.ok(jobService.startJob(
+                jobRequestDTO.getMin(),
+                jobRequestDTO.getMax(),
+                jobRequestDTO.getCount()));
     }
 
     @GetMapping("/{id}")

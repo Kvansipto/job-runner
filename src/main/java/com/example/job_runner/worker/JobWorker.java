@@ -116,7 +116,6 @@ public class JobWorker {
             log.debug("Updated job {}: progress = {}", jobKey, progress);
         } catch (Exception e) {
             log.error("Error while updating job {} status in Redis: {}", jobKey, e.getMessage(), e);
-
         }
     }
 }
