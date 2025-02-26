@@ -1,58 +1,89 @@
 services:
+  job-runner:
+    build: .
+    ports:
+      - "8080:8080"
+    container_name: job-runner
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      - redis
+      - kafka-broker-1
+      - kafka-broker-2
+      - kafka-broker-3
+    profiles: [ "services" ]
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    restart: always
+    profiles: [ "infra" ]
+
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
     container_name: zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
+    profiles: [ "infra" ]
 
   kafka-broker-1:
     image: confluentinc/cp-kafka:7.4.0
     container_name: kafka-broker-1
+    depends_on:
+      - zookeeper
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENERS: PLAINTEXT://:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka-broker-1:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-broker-1:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+#      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+#      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+#      KAFKA_LOG_RETENTION_HOURS: 168
+#      KAFKA_MESSAGE_MAX_BYTES: 20971520
+#      KAFKA_MAX_REQUEST_SIZE: 20971520
     ports:
       - "9092:9092"
-    depends_on:
-      - zookeeper
+    profiles: [ "infra" ]
 
   kafka-broker-2:
     image: confluentinc/cp-kafka:7.4.0
     container_name: kafka-broker-2
+    depends_on:
+      - zookeeper
     environment:
       KAFKA_BROKER_ID: 2
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENERS: PLAINTEXT://:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9093,PLAINTEXT_INTERNAL://kafka-broker-2:9093
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-broker-2:9093
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+#      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+#      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+#      KAFKA_LOG_RETENTION_HOURS: 168
+#      KAFKA_MESSAGE_MAX_BYTES: 20971520
+#      KAFKA_MAX_REQUEST_SIZE: 20971520
     ports:
       - "9093:9093"
-    depends_on:
-      - zookeeper
+    profiles: [ "infra" ]
 
   kafka-broker-3:
     image: confluentinc/cp-kafka:7.4.0
     container_name: kafka-broker-3
+    depends_on:
+      - zookeeper
     environment:
       KAFKA_BROKER_ID: 3
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENERS: PLAINTEXT://:9094
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9094,PLAINTEXT_INTERNAL://kafka-broker-3:9094
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-broker-3:9094
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+#      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+#      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+#      KAFKA_LOG_RETENTION_HOURS: 168
+#      KAFKA_MESSAGE_MAX_BYTES: 20971520
+#      KAFKA_MAX_REQUEST_SIZE: 20971520
     ports:
       - "9094:9094"
-    depends_on:
-      - zookeeper
-
-  redis:
-    image: redis:latest
-    ports:
-      - "6379:6379"
+    profiles: [ "infra" ]
