@@ -6,7 +6,8 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 public class JobStatusDTO {
-    private String status;
-    private String progress;
-    private String result;
+  private String status;
+  private String progress;
+  private String result;
+  private int retries;
 }

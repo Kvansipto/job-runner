@@ -5,9 +5,14 @@ spring:
   application:
     name: job-runner
   kafka:
+    topic: job-queue
+    bootstrap-servers: localhost:9092,localhost:9093,localhost:9094
     consumer:
       group-id: job-workers
       auto-offset-reset: earliest
+    streams:
+      replication-factor: 3
   data:
     redis:
+      host: localhost
       port: 6379
