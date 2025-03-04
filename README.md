@@ -14,7 +14,16 @@ This application is built using **Spring Boot** and is designed to handle long-r
 - **Kafka** for distributed task execution
 - **Redis** for storing job statuses and ensuring fault tolerance
 - **Spring Scheduler** for detecting and recovering lost jobs
+- **Springdoc OpenAPI** for API documentation with Swagger UI
 - **JUnit 5 & Testcontainers** for integration testing
+
+## API Documentation
+
+The API is documented using **Swagger UI**. After starting the application, you can access the documentation at:
+
+```
+http://localhost:8080/swagger-ui/index.html
+```
 
 ## API Endpoints
 
@@ -38,7 +47,9 @@ Content-Type: application/json
 **Response:**
 
 ```json
-"6faea0ae-6d1e-4da5-bb64-a7c0175edb88"
+{
+  "jobId": "6faea0ae-6d1e-4da5-bb64-a7c0175edb88"
+}
 ```
 
 ### Get Job Status
@@ -66,6 +77,7 @@ GET /jobs/{id}
 - **Fault Tolerance:** Jobs resume from the last checkpoint in case of a failure.
 - **Scalability:** Multiple instances of the application can run concurrently.
 - **Background Processing:** Uses Kafka and Redis to handle long-running tasks asynchronously.
+- **API Documentation:** Swagger UI provides an interactive API documentation interface.
 
 ### **Common Step: Clone the repository**  
 Before proceeding with any of the options below, clone the repository:
